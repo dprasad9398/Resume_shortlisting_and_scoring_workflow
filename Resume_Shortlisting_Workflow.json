@@ -1,0 +1,320 @@
+{
+  "name": "Resume Shortlisting Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.Resume.match(/[?&]id=([^&]+)/)[1] }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "6b7bec8f-80b3-41a6-ba4a-efea6887d261",
+      "name": "Download file",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -560,
+        -336
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "nrOxrci8Sy7tplig",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "id": "132b0e78-a828-416e-9518-f30a8d971b67",
+      "name": "Extract from File",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -336,
+        -336
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "options": {
+          "systemMessage": "=You are an AI Resume Screening Assistant.\n\nEvaluate the candidate against the following job requirements.\n\nJOB TITLE:\nJunior Java Developer\n\nREQUIRED SKILLS:\n- Java\n- Spring Boot\n- MySQL\n- REST APIs\n- Git\n\nPREFERRED SKILLS:\n- React\n- Docker\n- AWS\n\nEXPERIENCE:\n0 to 2 years\n\nEDUCATION:\nB.Tech / B.E. in Computer Science,\nInformation Technology, or a related field.\n\nAnalyze the candidate based only on the information provided.\n\nEvaluate:\n1. Required skill match\n2. Preferred skill match\n3. Experience match\n4. Education match\n5. Overall suitability\n\nCalculate a match score from 0 to 100.\n\nReturn ONLY valid JSON.\nDo not use Markdown.\nDo not use triple backtick json fences.\n\nReturn exactly this structure:\n\ncandidate_name, email,Applying for, match_score, matched_skills, missing_skills, experience_match, education_match, recommendation, reason\n\nRecommendation rules:\n- 80-100 = SHORTLIST\n- 60-79 = HUMAN_REVIEW\n- 0-59 = REJECT\n\nDo not invent information that is not present in the candidate information or resume.\nDo not make a final hiring decision.",
+          "passthroughBinaryPdfs": false
+        }
+      },
+      "id": "bf5d27b0-5644-4b00-b6c0-40fe5ee13fe1",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -112,
+        -336
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {}
+      },
+      "id": "75aefd19-7c13-4ee9-831c-4d16fa217358",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -48,
+        -112
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "tuesSvtz1e4oWSfN",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const text = $json.output;\n\nconst cleanText = text\n  .replace(/^```json\\s*/, '')\n  .replace(/\\s*```$/, '')\n  .trim();\n\nconst result = JSON.parse(cleanText);\n\nreturn {\n  json: result\n};"
+      },
+      "id": "92e1e39a-7c6f-4f06-be15-e3602dbcef44",
+      "name": "Code in Python",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        -336
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "Next Steps: Your Resume Shortlisted",
+        "message": "=<p>Dear {{ $json.candidate_name }},</p>  <p> Thank you for applying for the <strong>{{ $json['Applying for'] }}</strong> position. </p>  <p> We are pleased to inform you that your resume has been <strong>shortlisted</strong> for the next stage of our recruitment process. </p>  <p> Our initial screening indicates that your profile aligns well with the requirements of the position. </p>  <p><strong>Next Steps:</strong></p>  <ul>   <li>Our recruitment team will review your application.</li>   <li>You will receive further details regarding the interview process shortly.</li>   <li>Please keep your phone and email available for further communication.</li> </ul>  <p> Please note that this shortlisting is based on the initial resume screening and does not constitute a final selection or employment offer. </p>  <p> We appreciate your interest in joining our organization and look forward to connecting with you. </p>  <p> Best regards,<br> <strong>Recruitment Team</strong><br> HR Department </p>",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "HR Team"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        688,
+        -432
+      ],
+      "id": "7721b77e-3158-413d-9dfd-f2524a955dcb",
+      "name": "Send a message",
+      "webhookId": "f23ee416-4177-497c-9b9c-31e8f367f075",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "NMVlSMcheH0OtOdm",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "13f60272-74b4-43b1-8101-a556681736db",
+              "leftValue": "={{ $json.match_score }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        464,
+        -336
+      ],
+      "id": "e52b7162-89fd-4f9f-b878-52e5528c7a5c",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "Your Application Update",
+        "message": "=<p>Dear {{ $json.candidate_name }},</p>  <p> Thank you for your interest in the <strong>Junior Java Developer</strong> position and for taking the time to submit your application. </p>  <p> After careful consideration of your application, we regret to inform you that we will not be moving forward with your application for this position at this time. </p>  <p> We appreciate the time and effort you invested in the application process. Your skills and experience are valuable, and we encourage you to apply for future opportunities that may better match your profile. </p>  <p> We wish you all the best in your job search and future career. </p>  <p> Thank you once again for your interest in our organization. </p>  <p> Best regards,<br> <strong>Recruitment Team</strong><br> HR Department </p>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        688,
+        -240
+      ],
+      "id": "aa9b66ef-b2e6-4802-b72f-196c7885b9c9",
+      "name": "Send a message1",
+      "webhookId": "f23ee416-4177-497c-9b9c-31e8f367f075",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "NMVlSMcheH0OtOdm",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "1pdc3BOJ4NJ2tPcch5TdqGqb4BiIW03b7j6GeJ-eJvUs",
+          "mode": "list",
+          "cachedResultName": "Job_Application_form (Responses)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1pdc3BOJ4NJ2tPcch5TdqGqb4BiIW03b7j6GeJ-eJvUs/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 594728680,
+          "mode": "list",
+          "cachedResultName": "Form responses 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1pdc3BOJ4NJ2tPcch5TdqGqb4BiIW03b7j6GeJ-eJvUs/edit#gid=594728680"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        -784,
+        -336
+      ],
+      "id": "23d362d4-5c08-4070-aa6c-975d7f0bbf82",
+      "name": "Google Sheets Trigger",
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "S8LPVzXzzre061wJ",
+          "name": "Google Sheets Trigger account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in Python",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in Python": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "07da9686-5f76-43a2-b4a0-c279cae4e70a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "834bd8a6886c4c468005d2db7d7525db3a2c4dfcab328f8e5997740c867b8267"
+  },
+  "nodeGroups": [],
+  "id": "KSC1cWlFXYesDllH",
+  "tags": []
+}
